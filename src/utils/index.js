@@ -1,6 +1,7 @@
 const chalk = require('chalk');
 const fs = require('fs-extra');
 const childProcess = require('child_process');
+const path = require('path');
 
 // 封装log函数
 exports.log = {
@@ -17,16 +18,15 @@ exports.log = {
 
 // 拷贝下载的repo资源
 exports.copyFiles = async (tempPath, targetPath, excludes = []) => {
-  const removeFiles = ['./git', './changelogs']
-  // 资源拷贝
-  await fs.copySync(tempPath, targetPath)
-
+  const removeFiles = ['./.git', './changelogs']
   // 删除额外的资源文件
   if (excludes && excludes.length) {
-    await Promise.all(excludes.map(file => async () =>
+    await Promise.all(excludes.map(file => async () => 
       await fs.removeSync(path.resolve(targetPath, file))
     ));
   }
+  // 资源拷贝
+  await fs.copySync(tempPath, targetPath)
 }
 
 // 判断是否是函数

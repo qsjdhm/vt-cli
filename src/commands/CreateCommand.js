@@ -161,6 +161,7 @@ class Creator {
 
     // 让用户输入目标项目的git地址，用于生成git信息
     async inputProjectGit () {
+        // 删除额外的资源文件
         const { inputGitAddress } = await inquirer.prompt({
             name: 'inputGitAddress',
             type: 'input',
@@ -168,10 +169,9 @@ class Creator {
         });
         // 创建目录，并克隆项目
         await fs.mkdir(this.RepoMaps.target)
-        console.info(12344)
         await runCmd(`git clone ${inputGitAddress} ${this.RepoMaps.target}`)
         const { temp, target } = this.RepoMaps
-        await copyFiles(temp, target, ['./git', './changelogs']);
+        await copyFiles(temp, target, ['./.git', './changelogs']);
         await runCmd(`git add . `)
         await runCmd(`git commit -m "init"`)
         await runCmd(`git remote add origin ${inputGitAddress}`)
