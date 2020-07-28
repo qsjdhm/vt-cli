@@ -40,7 +40,7 @@ class Creator {
     async init() {
         try {
             await this.inputProjectGit()
-            await this.copyRepoFiles();
+            // await this.copyRepoFiles();
             // // 监测文件夹是否存在
             // await this.checkFolderExist();
             // // 用户选择分支并复制到目标项目目录下
@@ -170,7 +170,12 @@ class Creator {
         await fs.mkdir(this.RepoMaps.target)
         console.info(12344)
         await runCmd(`git clone ${inputGitAddress} ${this.RepoMaps.target}`)
-        
+        const { temp, target } = this.RepoMaps
+        await copyFiles(temp, target, ['./git', './changelogs']);
+        await runCmd(`git add . `)
+        await runCmd(`git commit -m "init"`)
+        await runCmd(`git remote add origin ${inputGitAddress}`)
+        await runCmd(`git push -u origin master`)
         // await fs.removeSync(temp);
         // this.spinner.start('正在克隆项目代码...');
         // await runCmd(`git clone -b master ${inputGitAddress} ${temp}`)
