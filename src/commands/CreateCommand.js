@@ -39,14 +39,14 @@ class Creator {
     // 初始化函数
     async init() {
         try {
-            await this.inputProjectGit()
-            // await this.copyRepoFiles();
-            // // 监测文件夹是否存在
-            // await this.checkFolderExist();
-            // // 用户选择分支并复制到目标项目目录下
-            // await this.getFrameBranchs();
-            // // 让用户输入目标项目的git地址，用于生成git信息
             // await this.inputProjectGit()
+            // await this.copyRepoFiles();
+            // 监测文件夹是否存在
+            await this.checkFolderExist();
+            // 用户选择分支并复制到目标项目目录下
+            await this.getFrameBranchs();
+            // 让用户输入目标项目的git地址，用于生成git信息
+            await this.inputProjectGit()
             
 
            
@@ -172,21 +172,14 @@ class Creator {
         await runCmd(`git clone ${inputGitAddress} ${this.RepoMaps.target}`)
         const { temp, target } = this.RepoMaps
         await copyFiles(temp, target, ['./.git', './changelogs']);
-        await runCmd(`git add . `)
+        await runCmd(`git add * `)
         await runCmd(`git commit -m "init"`)
-        await runCmd(`git remote add origin ${inputGitAddress}`)
-        await runCmd(`git push -u origin master`)
+        // await runCmd(`git remote add origin ${inputGitAddress}`)
+        await runCmd(`git push origin master`)
         // await fs.removeSync(temp);
         // this.spinner.start('正在克隆项目代码...');
         // await runCmd(`git clone -b master ${inputGitAddress} ${temp}`)
         // this.spinner.succeed(frameBranch+'版本框架源码下载成功');
-
-
-
-        // await runCmd(`git clone -b ${frameBranch} ${frameGitAddress} ${temp}`)
-        // https://github.com/qsjdhm/test.git
-        // console.info(this.RepoMaps.target)
-        // this.RepoMaps.target = this.genTargetPath(inputGitAddress)
     }
 
     // 拷贝repo资源
