@@ -20,11 +20,14 @@ exports.log = {
 exports.copyFiles = async (tempPath, targetPath, excludes = []) => {
   const removeFiles = ['./.git', './changelogs']
   // 删除额外的资源文件
-  if (excludes && excludes.length) {
-    await Promise.all(excludes.map(file => async () => 
-      await fs.removeSync(path.resolve(targetPath, file))
-    ));
-  }
+  await fs.removeSync(path.resolve(tempPath, './.git'))
+//   if (excludes && excludes.length) {
+//     await Promise.all(excludes.map(file => async () => {
+//         console.info(33)
+//         await fs.removeSync(path.resolve(tempPath, file))
+//       }
+//     ));
+//   }
   // 资源拷贝
   await fs.copySync(tempPath, targetPath)
 }
