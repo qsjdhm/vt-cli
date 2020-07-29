@@ -39,8 +39,6 @@ class Creator {
     // 初始化函数
     async init() {
         try {
-            // await this.inputProjectGit()
-            // await this.copyRepoFiles();
             // 监测文件夹是否存在
             await this.checkFolderExist();
             // 用户选择分支并复制到目标项目目录下
@@ -48,12 +46,6 @@ class Creator {
             // 让用户输入目标项目的git地址，用于生成git信息
             await this.inputProjectGit()
             
-
-           
-        //   await this.copyRepoFiles();
-        //   await this.downloadRepo();
-        //   await this.copyRepoFiles();
-        //   await this.initGit();
         //   await this.updatePkgFile();
         //   await this.initGit();
         //   await this.runApp();
@@ -169,29 +161,22 @@ class Creator {
         });
         // 创建目录，并克隆项目
         await fs.mkdir(this.RepoMaps.target)
-        await runCmd(`git clone ${inputGitAddress} ${this.RepoMaps.target}`)
+
+        this.spinner.start('正在初始化项目...');
+        await runCmd(`cd ${this.RepoMaps.target}`);
+        process.chdir(this.RepoMaps.target);
+        await runCmd(`git init`);
         const { temp, target } = this.RepoMaps
         await copyFiles(temp, target, ['./.git', './changelogs']);
-        await runCmd(`git add * `)
-        await runCmd(`git commit -m "init"`)
+        this.spinner.succeed('项目初始化完成！');
+        // this.spinner.start('正在将项目代码推送到master分支...');
+        // await runCmd(`git add .`)
+        // await runCmd(`git commit -m "init"`)
         // await runCmd(`git remote add origin ${inputGitAddress}`)
-        await runCmd(`git push origin master`)
+        // await runCmd(`git push origin master`)
+        // this.spinner.succeed('项目代码推送完成！');
         // await fs.removeSync(temp);
-        // this.spinner.start('正在克隆项目代码...');
-        // await runCmd(`git clone -b master ${inputGitAddress} ${temp}`)
-        // this.spinner.succeed(frameBranch+'版本框架源码下载成功');
     }
-
-    // 拷贝repo资源
-    async copyRepoFiles() {
-        const { temp, target } = this.RepoMaps
-        await copyFiles(temp, target, ['./git', './changelogs']);
-        await runCmd(`git add . `)
-        await runCmd(`git commit -m "init"`)
-        await runCmd(`git remote add origin ${inputGitAddress}`)
-        await runCmd(`git push -u origin master`)
-    }
-
 
     // 下载repo资源
     downloadRepo () {
@@ -217,81 +202,54 @@ class Creator {
         this.spinner.succeed('Git初始化完成！');
     }
 
-  // 下载repo资源
-  downloadRepo() {
-    this.spinner.start('正在拉取项目模板源码...');
-    const { repo, temp } = this.RepoMaps
-    return new Promise(async (resolve, reject) => {
-      await fs.removeSync(temp);
-      await runCmd(`git clone ${this.source} ${temp}`)
-      this.spinner.succeed('模版下载成功');
-        try {
-            await runCmd(`cd ${this.RepoMaps.temp}`)
-            process.chdir(this.RepoMaps.temp);
-            const list = await runCmd('git branch -a')
-            console.info(111)
-            console.info(list.split('\n'))
-            this.spinner.succeed('获取分支成功');
-        } catch (error) {
-            reject(error)
-        } finally {
-            resolve()
-        }
-    //   download(repo, temp, { clone: true }, async err => {
-    //     if (err) return reject(err);
-    //     this.spinner.succeed('模版下载成功');
-    //     return resolve()
-    //   })
-    })
-  }
-
-
-
-  // 更新package.json文件
-  async updatePkgFile() {
-    this.spinner.start('正在更新package.json...');
-    const pkgPath = path.resolve(this.RepoMaps.target, 'package.json');
-    const unnecessaryKey = ['keywords', 'license', 'files']
-    const { name = '', email = '' } = await getGitUser();
-
-    const jsonData = fs.readJsonSync(pkgPath);
-    unnecessaryKey.forEach(key => delete jsonData[key]);
-    Object.assign(jsonData, {
-      name: this.source,
-      author: name && email ? `${name} ${email}` : '',
-      provide: true,
-      version: "1.0.0"
-    });
-    await fs.writeJsonSync(pkgPath, jsonData, { spaces: '\t' })
-    this.spinner.succeed('package.json更新完成！');
-  }
-
-  // 初始化git文件
-  async initGit() {
-    this.spinner.start('正在初始化Git管理项目...');
-    await runCmd(`cd ${this.RepoMaps.target}`);
-    process.chdir(this.RepoMaps.target);
-    await runCmd(`git init`);
-    this.spinner.succeed('Git初始化完成！');
-  }
-
-  // 安装依赖
-  async runApp() {
-    try {
-      this.spinner.start('正在安装项目依赖文件，请稍后...');
-      await runCmd(`npm install --registry=https://registry.npm.taobao.org`);
-      await runCmd(`git add . && git commit -m"init: 初始化项目基本框架"`);
-      this.spinner.succeed('依赖安装完成！');
-
-      console.log('请运行如下命令启动项目吧：\n');
-      log.success(`   cd ${this.source}`);
-      log.success(`   npm run serve`);
-    } catch (error) {
-      console.log('项目安装失败，请运行如下命令手动安装：\n');
-      log.success(`   cd ${this.source}`);
-      log.success(`   npm run install`);
+    // 初始化git文件
+    async initGit() {
+        this.spinner.start('正在初始化Git管理项目...');
+        await runCmd(`cd ${this.RepoMaps.target}`);
+        process.chdir(this.RepoMaps.target);
+        await runCmd(`git init`);
+        this.spinner.succeed('Git初始化完成！');
     }
-  }
+
+
+    // 更新package.json文件
+    async updatePkgFile() {
+        this.spinner.start('正在更新package.json...');
+        const pkgPath = path.resolve(this.RepoMaps.target, 'package.json');
+        const unnecessaryKey = ['keywords', 'license', 'files']
+        const { name = '', email = '' } = await getGitUser();
+
+        const jsonData = fs.readJsonSync(pkgPath);
+        unnecessaryKey.forEach(key => delete jsonData[key]);
+        Object.assign(jsonData, {
+            name: this.source,
+            author: name && email ? `${name} ${email}` : '',
+            provide: true,
+            version: "1.0.0"
+        });
+        await fs.writeJsonSync(pkgPath, jsonData, { spaces: '\t' })
+        this.spinner.succeed('package.json更新完成！');
+    }
+
+    
+
+    // 安装依赖
+    async runApp() {
+        try {
+            this.spinner.start('正在安装项目依赖文件，请稍后...');
+            await runCmd(`npm install --registry=https://registry.npm.taobao.org`);
+            await runCmd(`git add . && git commit -m"init: 初始化项目基本框架"`);
+            this.spinner.succeed('依赖安装完成！');
+
+            console.log('请运行如下命令启动项目吧：\n');
+            log.success(`   cd ${this.source}`);
+            log.success(`   npm run serve`);
+        } catch (error) {
+            console.log('项目安装失败，请运行如下命令手动安装：\n');
+            log.success(`   cd ${this.source}`);
+            log.success(`   npm run install`);
+        }
+    }
 }
 
 module.exports = Creator;
