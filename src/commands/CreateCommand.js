@@ -7,6 +7,10 @@ const { copyFiles, parseCmdParams, getGitUser, runCmd, log } = require('../utils
 const { exit } = require('process');
 const inquirer = require('inquirer');
 const { InquirerConfig, RepoPath } = require('../utils/config');
+const CFonts = require('cfonts');
+const chalk = require('chalk')
+
+
 
 /**
  * class 项目创建命令
@@ -44,11 +48,9 @@ class Creator {
             // 用户选择分支并复制到目标项目目录下
             await this.getFrameBranchs();
             // 让用户输入目标项目的git地址，用于生成git信息
-            await this.inputProjectGit()
-            
-        //   await this.updatePkgFile();
-        //   await this.initGit();
-        //   await this.runApp();
+            await this.inputProjectGit();
+            // 更新package.json文件
+            await this.updatePkgFile();
         } catch (error) {
             console.log('')
             log.error(error);
@@ -60,6 +62,16 @@ class Creator {
 
     // 监测文件夹是否存在
     checkFolderExist() {
+        CFonts.say('VT TEAM', {
+            font: 'block',              // define the font face
+            align: 'left',              // define text alignment
+            colors: ['#ff8800'],         // define all colors
+            background: 'transparent',  // define the background color, you can also use `backgroundColor` here as key
+            letterSpacing: 1,           // define letter spacing
+            lineHeight: 1,              // define the line height
+            space: true,                // define if the output text should have empty lines on top and on the bottom
+            maxLength: '0',             // define how many character can be on one line
+        });
         return new Promise(async (resolve, reject) => {
             const { target } = this.RepoMaps
             // 如果create附加了--force或-f参数，则直接执行覆盖操作
@@ -96,40 +108,36 @@ class Creator {
         let frameGitAddress = '';
         const { frameType } = await inquirer.prompt(InquirerConfig.frameList);
         if (frameType === 'pc') {
-            frameGitAddress = 'https://github.com/qsjdhm/zymulinput.git'
+            frameGitAddress = 'git@git.vtstar.net:vt-microservice-platform/vtcloud-frontend/vcp-web.git'
+            // frameGitAddress = 'git@github.com:qsjdhm/zymulinput.git'
         } else if (frameType === 'client') {
             frameGitAddress = 'github:qsjdhm/zymulinput'
         } else if (frameType === 'hybrid') {
             frameGitAddress = 'github:qsjdhm/zymulinput'
         }
-        this.spinner.start('正在获取框架版本信息...');
+        this.spinner.start('正在下载框架源代码...');
         const { repo, temp } = this.RepoMaps
         return new Promise(async (resolve, reject) => {
             await fs.removeSync(temp);
             // 将框架代码clone到__temp__目录下，通过.git目录获取框架代码分支版本信息
-            await runCmd(`git clone ${frameGitAddress} ${temp}`)
+            await runCmd(`git clone --progress ${frameGitAddress} ${temp}`)
             try {
                 await runCmd(`cd ${temp}`)
                 process.chdir(temp);
+                this.spinner.succeed('主分支源码下载成功');
                 const list = await runCmd('git branch -a')
-                this.spinner.succeed('获取框架版本信息成功');
                 // 过滤出有用的分支
                 const usefulBranches = this.filterUsefulBranches(list.split('\n'))
                 InquirerConfig.frameBranchs.choices = usefulBranches
                 const { frameBranch } = await inquirer.prompt([{
                     type: 'list',
                     name: 'frameBranch',
-                    message: '请选择框架分支版本：',
+                    message: '请选择想使用的分支：',
                     choices: usefulBranches
                 }]);
-                await runCmd(`cd ../`)
-                process.chdir('../');
-                // clone选中分支的代码
-                await fs.removeSync(temp);
-                // 将框架代码clone到__temp__目录下，通过.git目录获取框架代码分支版本信息
-                this.spinner.start('正在获取'+frameBranch+'版本框架源码...');
-                await runCmd(`git clone -b ${frameBranch} ${frameGitAddress} ${temp}`)
-                this.spinner.succeed(frameBranch+'版本框架源码下载成功');
+                this.spinner.start('正在切换到'+frameBranch+'分支...');
+                await runCmd(`git checkout -b ${frameBranch} origin/${frameBranch}`)
+                this.spinner.succeed(frameBranch+'分支切换成功');
             } catch (error) {
                 reject(error)
             } finally {
@@ -168,7 +176,9 @@ class Creator {
         await runCmd(`git init`);
         const { temp, target } = this.RepoMaps
         await copyFiles(temp, target, ['./.git', './changelogs']);
+        await fs.removeSync(this.RepoMaps.temp);
         this.spinner.succeed('项目初始化完成！');
+        // chalk.green('项目初始化完成！');
         // this.spinner.start('正在将项目代码推送到master分支...');
         // await runCmd(`git add .`)
         // await runCmd(`git commit -m "init"`)
@@ -177,40 +187,6 @@ class Creator {
         // this.spinner.succeed('项目代码推送完成！');
         // await fs.removeSync(temp);
     }
-
-    // 下载repo资源
-    downloadRepo () {
-        this.spinner.start('正在拉取项目模板...');
-        const { repo, temp } = this.RepoMaps
-        return new Promise(async (resolve, reject) => {
-            await fs.removeSync(temp);
-            download(repo, temp, async err => {
-                if (err) return reject(err);
-                this.spinner.succeed('模版下载成功');
-                return resolve()
-            })
-        })
-    }
-
-    // 让用户输入目标项目的git地址，用于生成git信息
-    async initGit() {
-        const { inputGitAddress } = await inquirer.prompt(InquirerConfig.gitAddress);
-        this.spinner.start('正在初始化Git管理项目...');
-        await runCmd(`cd ${this.RepoMaps.target}`);
-        process.chdir(this.RepoMaps.target);
-        await runCmd(`git init`);
-        this.spinner.succeed('Git初始化完成！');
-    }
-
-    // 初始化git文件
-    async initGit() {
-        this.spinner.start('正在初始化Git管理项目...');
-        await runCmd(`cd ${this.RepoMaps.target}`);
-        process.chdir(this.RepoMaps.target);
-        await runCmd(`git init`);
-        this.spinner.succeed('Git初始化完成！');
-    }
-
 
     // 更新package.json文件
     async updatePkgFile() {
