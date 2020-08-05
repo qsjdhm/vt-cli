@@ -1,36 +1,32 @@
-# vta-cli
+# vt-cli
 
-<div align="center">
-  <a href="https://www.npmjs.com/package/vta-cli">
-    <img src="https://badgen.net/npm/v/vta-cli?color=blue">
-  </a>
-  <a href="./LICENSE">
-    <img src="https://badgen.net/npm/license/vta-cli">
-  </a>
-</div>
 
-一个快速生成Vue+Ts+ElementUi的RBAC系统模板的脚手架。
+前端平台级脚手架，用来维护各个项目使用框架的迭代升级
 
-脚手架会拉取[vue-typescript-admin](https://github.com/chinaBerg/vue-typescript-admin)的模板代码，并完成package.json文件字段的修改、git初始化、自动安装依赖等一些基础工作。
+#### 初始化功能
+脚手架会拉取公司平台PC端、移动端、现场客户端主框架代码，并完成package.json文件字段的修改、submodule的添加、git初始化、第一次初始化推送自动安装依赖等一些基础工作。
+
+#### 更新主框架功能
+正在开发
 
 ### 安装
 
 ```bash
 # 安装
-npm install vta-cli -g
+npm install vt-cli -g
 ```
 
 ### 使用
 
 ```bash
 # 创建项目
-vta create <project name>
+vt init <project name>
 
 # 查看帮助
-vta -h
+vt -h
 
 # 查看版本
-vta -v
+vt -v
 ```
 
 ### 协议
