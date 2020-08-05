@@ -16,7 +16,7 @@
 npm install vt-cli -g
 ```
 
-### 本地调试还需执行（需在当前项目根目录下）
+### 本地调试需执行（需在当前项目根目录下：vt-cli）
 ```bash
 npm link
 
