@@ -1,7 +1,7 @@
 {
     "name": "vt-cli",
     "version": "0.0.1",
-    "description": "快速生成Vue+Ts+Element后台系统基础架构的脚手架工具",
+    "description": "快速生成主框架脚手架工具",
     "keywords": [
         "vue cli",
         "vue ts",

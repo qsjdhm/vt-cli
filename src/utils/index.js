@@ -18,19 +18,17 @@ exports.log = {
 
 // 拷贝下载的repo资源
 exports.copyFiles = async (tempPath, targetPath, excludes = []) => {
-  const removeFiles = ['./.git', './changelogs']
-  // 删除额外的资源文件
-  await fs.removeSync(path.resolve(tempPath, './.git'))
-//   if (excludes && excludes.length) {
-//     await Promise.all(excludes.map(file => async () => {
-//         console.info(33)
-//         await fs.removeSync(path.resolve(tempPath, file))
-//       }
-//     ));
-//   }
-  // 资源拷贝
-  await fs.copySync(tempPath, targetPath)
-}
+    const removeFiles = ['./.git', './changelogs']
+    // 删除额外的资源文件
+    if (excludes && excludes.length) {
+      await Promise.all(excludes.map(async (file) => {
+          await fs.removeSync(path.resolve(tempPath, file))
+        }
+      ));
+    }
+    // 资源拷贝
+    await fs.copySync(tempPath, targetPath)
+  }
 
 // 判断是否是函数
 const isFunction = (val) => {
@@ -69,10 +67,12 @@ exports.getGitUser = () => {
   return new Promise(async (resolve) => {
     const user = {}
     try {
-      const [name] = await runCmd('git config user.name')
-      const [email] = await runCmd('git config user.email')
-      if (name) user.name = name.replace(/\n/g, '');
-      if (email) user.email = `<${email || ''}>`.replace(/\n/g, '')
+      const name = await runCmd('git config user.name')
+      const email = await runCmd('git config user.email')
+      if (name) user.name = name;
+      if (email) user.email = `<${email || ''}`
+    //   if (name) user.name = name.replace(/\n/g, '');
+    //   if (email) user.email = `<${email || ''}>`.replace(/\n/g, '')
     } catch (error) {
       log.error('获取用户Git信息失败')
       reject(error)

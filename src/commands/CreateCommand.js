@@ -11,7 +11,6 @@ const CFonts = require('cfonts');
 const chalk = require('chalk')
 
 
-
 /**
  * class 项目创建命令
  *
@@ -33,10 +32,6 @@ class Creator {
         this.init()
     }
 
-    // 生成目标文件夹的绝对路径
-    genTargetPath(relPath = 'vue-ts-template') {
-        return path.resolve(process.cwd(), relPath);
-    }
 
   
 
@@ -45,12 +40,20 @@ class Creator {
         try {
             // 监测文件夹是否存在
             await this.checkFolderExist();
-            // 用户选择分支并复制到目标项目目录下
-            await this.getFrameBranchs();
-            // 让用户输入目标项目的git地址，用于生成git信息
-            await this.inputProjectGit();
+            // 根据用户选择的分支下载框架代码
+            await this.downloadFrameByBranch();
+            // 初始化项目的git
+            await this.initProjectGit();
+            // copy框架代码到项目目录
+            await this.copyFrameToPeoject();
             // 更新package.json文件
             await this.updatePkgFile();
+            // 添加子模块
+            await this.addGitSubmodule();
+            // 将代码推送到git远端仓库
+            await this.pushToGit();
+            // 安装依赖
+            await this.runApp();
         } catch (error) {
             console.log('')
             log.error(error);
@@ -97,14 +100,14 @@ class Creator {
                     exit(1);
                 }
             } catch (error) {
-                log.error(`[vta]Error:${error}`)
+                log.error(`[vt]Error:${error}`)
                 exit(1);
             }
         })
     }
 
-    // 获取框架代码，用户选择分支并复制到目标项目目录下
-    async getFrameBranchs () {
+    // 根据用户选择的分支下载框架代码
+    async downloadFrameByBranch () {
         let frameGitAddress = '';
         const { frameType } = await inquirer.prompt(InquirerConfig.frameList);
         if (frameType === 'pc') {
@@ -115,16 +118,16 @@ class Creator {
         } else if (frameType === 'hybrid') {
             frameGitAddress = 'github:qsjdhm/zymulinput'
         }
-        this.spinner.start('正在下载框架源代码...');
-        const { repo, temp } = this.RepoMaps
+        this.spinner.start(`正在下载框架源代码，源地址：${frameGitAddress}`);
+        const { temp } = this.RepoMaps
         return new Promise(async (resolve, reject) => {
             await fs.removeSync(temp);
             // 将框架代码clone到__temp__目录下，通过.git目录获取框架代码分支版本信息
-            await runCmd(`git clone --progress ${frameGitAddress} ${temp}`)
+            await runCmd(`git clone --recursive ${frameGitAddress} ${temp}`)
             try {
                 await runCmd(`cd ${temp}`)
                 process.chdir(temp);
-                this.spinner.succeed('主分支源码下载成功');
+                this.spinner.succeed(`源码下载成功，源地址：${frameGitAddress}`);
                 const list = await runCmd('git branch -a')
                 // 过滤出有用的分支
                 const usefulBranches = this.filterUsefulBranches(list.split('\n'))
@@ -146,55 +149,32 @@ class Creator {
         })
     }
 
-    // 过滤出有用的分支
-    filterUsefulBranches (list) {
-        // 过滤无用的分支信息
-        let branchList = []
-        list.forEach(item => {
-            let branchTemp = item.split('remotes/origin/')
-            if (branchTemp.length > 1 && branchTemp[1].indexOf('HEAD ->') === -1) {
-                branchList.push({name: branchTemp[1], value: branchTemp[1]})
-            }
-        })
-        return branchList
-    }
-
-    // 让用户输入目标项目的git地址，用于生成git信息
-    async inputProjectGit () {
-        // 删除额外的资源文件
-        const { inputGitAddress } = await inquirer.prompt({
-            name: 'inputGitAddress',
-            type: 'input',
-            message: '请输入项目的GIT地址: '
-        });
+    // 初始化项目的git
+    async initProjectGit () {
         // 创建目录，并克隆项目
         await fs.mkdir(this.RepoMaps.target)
-
-        this.spinner.start('正在初始化项目...');
+        this.spinner.start('正在初始化项目git信息...');
         await runCmd(`cd ${this.RepoMaps.target}`);
         process.chdir(this.RepoMaps.target);
         await runCmd(`git init`);
+        this.spinner.succeed('git初始化完成！');
+    }
+
+    // copy框架代码到项目目录
+    async copyFrameToPeoject () {
         const { temp, target } = this.RepoMaps
+        this.spinner.start(`正在copy框架代码到${target}目录...`);
         await copyFiles(temp, target, ['./.git', './changelogs']);
-        await fs.removeSync(this.RepoMaps.temp);
-        this.spinner.succeed('项目初始化完成！');
-        // chalk.green('项目初始化完成！');
-        // this.spinner.start('正在将项目代码推送到master分支...');
-        // await runCmd(`git add .`)
-        // await runCmd(`git commit -m "init"`)
-        // await runCmd(`git remote add origin ${inputGitAddress}`)
-        // await runCmd(`git push origin master`)
-        // this.spinner.succeed('项目代码推送完成！');
-        // await fs.removeSync(temp);
+        await fs.removeSync(temp);
+        this.spinner.succeed(`copy代码完成！`);
     }
 
     // 更新package.json文件
-    async updatePkgFile() {
+    async updatePkgFile () {
         this.spinner.start('正在更新package.json...');
         const pkgPath = path.resolve(this.RepoMaps.target, 'package.json');
         const unnecessaryKey = ['keywords', 'license', 'files']
         const { name = '', email = '' } = await getGitUser();
-
         const jsonData = fs.readJsonSync(pkgPath);
         unnecessaryKey.forEach(key => delete jsonData[key]);
         Object.assign(jsonData, {
@@ -207,24 +187,82 @@ class Creator {
         this.spinner.succeed('package.json更新完成！');
     }
 
-    
+    // 添加子模块
+    async addGitSubmodule () {
+        // 初始化子模块
+        await runCmd(`cd ${this.RepoMaps.target}`);
+        process.chdir(this.RepoMaps.target);
+        this.spinner.start('正在拉取子模块...');
+
+        let submoduleList = ['./vt-package', './vt-style', './vt-template']
+        await Promise.all(submoduleList.map(async (file) => {
+                await fs.removeSync(path.resolve(this.RepoMaps.target, file))
+            }
+        ));
+        await runCmd(`git submodule add git@git.vtstar.net:vt-microservice-platform/vtcloud-frontend/vt-package.git vt-package`);
+        await runCmd(`git submodule add git@git.vtstar.net:vt-microservice-platform/vtcloud-frontend/vt-style.git vt-style`);
+        await runCmd(`git submodule add git@git.vtstar.net:vt-microservice-platform/vtcloud-frontend/vt-template.git vt-template`);
+        this.spinner.succeed('拉取子模块完成！');
+    }
+
+    // 将代码推送到git远端仓库
+    async pushToGit () {
+        const { inputGitAddress } = await inquirer.prompt({
+            name: 'inputGitAddress',
+            type: 'input',
+            message: '请输入项目的git地址: '
+        });
+        this.spinner.start('正在将项目代码推送到master分支...');
+        await runCmd(`git remote add origin ${inputGitAddress}`)
+        await runCmd(`git add --all`)
+        await runCmd(`git commit -m 'init'`)
+        try {
+            await runCmd(`git push origin master`)
+            this.spinner.succeed('代码推送完成！');
+        } catch (error) {
+            // 这是因为在git上创建目录时添加了内容比如README.txt，因此本地仓库并不是最新，需要先更新本地目录保持与远端一致：
+            await runCmd(`git pull origin master`)
+            await runCmd(`git push origin master`)
+            this.spinner.succeed('代码推送完成！');
+            // log.error(`[vt]Error:${error}`)
+        }
+    }
 
     // 安装依赖
     async runApp() {
         try {
             this.spinner.start('正在安装项目依赖文件，请稍后...');
-            await runCmd(`npm install --registry=https://registry.npm.taobao.org`);
-            await runCmd(`git add . && git commit -m"init: 初始化项目基本框架"`);
+            // await runCmd(`npm install --registry=https://registry.npm.taobao.org`);
+            await runCmd(`cnpm install`);
             this.spinner.succeed('依赖安装完成！');
 
-            console.log('请运行如下命令启动项目吧：\n');
+            log.success('请运行如下命令启动项目吧：\n');
             log.success(`   cd ${this.source}`);
-            log.success(`   npm run serve`);
+            log.success(`   npm run dev`);
         } catch (error) {
-            console.log('项目安装失败，请运行如下命令手动安装：\n');
+            log.error('项目安装失败，请运行如下命令手动安装：\n');
             log.success(`   cd ${this.source}`);
             log.success(`   npm run install`);
         }
+    }
+
+
+    // 生成目标文件夹的绝对路径
+    genTargetPath(relPath = 'vue-ts-template') {
+        return path.resolve(process.cwd(), relPath);
+    }
+    
+    // 过滤出有用的分支
+    filterUsefulBranches (list) {
+        // 过滤无用的分支信息
+        let branchList = []
+        list.forEach(item => {
+            let branchTemp = item.split('remotes/origin/')
+            if (branchTemp.length > 1 && branchTemp[1].indexOf('HEAD ->') === -1) {
+                branchList.push({name: branchTemp[1], value: branchTemp[1]})
+            }
+        })
+        return branchList
     }
 }
 
